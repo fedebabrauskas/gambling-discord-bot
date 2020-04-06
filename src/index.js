@@ -97,6 +97,38 @@ client.on('message', async (msg) => {
         },
       });
     }
+
+    if (msg.content.startsWith('!help')) {
+      return msg.channel.send({
+        embed: {
+          color: 0x0099ff,
+          title: 'GamblingBot',
+          description: 'List of available commands',
+          fields: [
+            {
+              name: '!balance',
+              value: 'Check your balance',
+            },
+            {
+              name: '!gamble <amount>',
+              value: 'Gamble an amount of credits',
+            },
+            {
+              name: '!top',
+              value: 'Check the top 10 gamblers ',
+            },
+            {
+              name: '!help',
+              value: 'See available commands',
+            },
+          ],
+          timestamp: new Date(),
+          footer: {
+            text: 'Developed by federico',
+          },
+        },
+      });
+    }
   } catch (error) {
     console.log(error);
   }
