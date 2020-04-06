@@ -9,81 +9,60 @@ class User extends Model {}
 User.init(
   {
     userId: DataTypes.STRING,
+    guildId: DataTypes.STRING,
     username: DataTypes.STRING,
     balance: {
       type: DataTypes.INTEGER,
-      defaultValue: 5,
+      defaultValue: 0,
     },
-    lastMessageTimestamp: DataTypes.INTEGER,
   },
   { sequelize, modelName: 'user' }
 );
 
+const prefix = process.env.DISCORD_BOT_PREFIX || '!';
 const client = new Client();
 
 client.on('ready', () => {
-  client.user.setActivity('!help', { type: 'LISTENING' }).then(() => {
-    console.log(`logged in as ${client.user.tag}`);
+  client.user.setActivity(`${prefix}help`, { type: 'LISTENING' }).then(() => {
+    console.log(`Logged in as ${client.user.tag}`);
   });
+
+  setInterval(() => {
+    client.guilds.cache.forEach((guild) => {
+      guild.members.cache
+        .filter((m) => !m.user.bot && m.user.presence.status === 'online')
+        .forEach(async (member) => {
+          let user = await User.findOne({
+            where: { userId: member.user.id },
+          });
+
+          if (!user) {
+            user = new User({
+              userId: member.user.id,
+              guildId: guild.id,
+              username: member.user.username,
+            });
+          }
+
+          user.balance = user.balance + 5;
+          await user.save();
+        });
+    });
+  }, 60000);
 });
 
 client.on('message', async (msg) => {
-  if (msg.author.bot) return;
+  if (!msg.content.startsWith(prefix) || msg.author.bot) return;
 
-  try {
-    let user = await User.findOne({ where: { userId: msg.author.id } });
+  const args = msg.content.slice(prefix.length).split(' ');
+  const command = args.shift().toLowerCase();
 
-    if (!user) {
-      user = new User({
-        userId: msg.author.id,
-        username: msg.author.username,
-        lastMessageTimestamp: msg.createdTimestamp,
-      });
-    }
-
-    if (!msg.content.startsWith('!')) {
-      const time = Date.now() - user.lastMessageTimestamp;
-      if (time > 60000) {
-        user.balance = user.balance + 5;
-        user.lastMessageTimestamp = msg.createdTimestamp;
-      }
-    }
-
-    user.username = msg.author.username;
-    await user.save();
-
-    if (msg.content === '!balance') {
-      return msg.channel.send(`you have ${user.balance} credits`);
-    }
-
-    if (msg.content.startsWith('!gamble')) {
-      const args = msg.content
-        .split(' ')
-        .slice(1)
-        .filter((x) => x);
-      const amount = args[0];
-
-      if (!amount || isNaN(amount)) {
-        return msg.channel.send('please enter a valid amount..');
-      }
-
-      if (amount > user.balance) {
-        return msg.channel.send(`you don't have ${amount} credits to bet`);
-      }
-
-      const result = Math.random() > 0.5;
-      user.balance = result ? user.balance + +amount : user.balance - amount;
-      await user.save();
-
-      return msg.channel.send(
-        `you have ${result ? 'won' : 'lost'} ${amount} credits`
-      );
-    }
-
-    if (msg.content.startsWith('!top')) {
+  if (command === 'top') {
+    try {
       const users = await User.findAll({
-        limit: 10,
+        where: { guildId: msg.guild.id },
         order: [['balance', 'DESC']],
+        limit: 10,
       });
       return msg.channel.send({
         embed: {
@@ -98,49 +77,97 @@ client.on('message', async (msg) => {
           }),
           timestamp: new Date(),
           footer: {
-            text: 'Developed by federico',
+            text: 'Developed by Fedjz',
           },
         },
       });
+    } catch (error) {
+      console.log('Error while fetching top users..');
     }
+  }
 
-    if (msg.content.startsWith('!help')) {
-      return msg.channel.send({
-        embed: {
-          color: 0x0099ff,
-          title: 'GamblingBot',
-          description: 'List of available commands',
-          fields: [
-            {
-              name: '!balance',
-              value: 'Check your balance',
-            },
-            {
-              name: '!gamble <amount>',
-              value: 'Gamble an amount of credits',
-            },
-            {
-              name: '!top',
-              value: 'Check the top 10 gamblers ',
-            },
-            {
-              name: '!help',
-              value: 'See available commands',
-            },
-          ],
-          timestamp: new Date(),
-          footer: {
-            text: 'Developed by federico',
+  if (command === 'help') {
+    return msg.channel.send({
+      embed: {
+        color: 0x0099ff,
+        title: 'GamblingBot Help',
+        description: 'List of available commands',
+        fields: [
+          {
+            name: '!balance',
+            value: 'Check your current balance',
           },
+          {
+            name: '!gamble <amount>',
+            value: 'Gamble an amount of your credits',
+          },
+          {
+            name: '!top',
+            value: 'Check the top 10 gamblers of the server',
+          },
+          {
+            name: '!help',
+            value: 'See available commands',
+          },
+        ],
+        timestamp: new Date(),
+        footer: {
+          text: 'Developed by Fedjz',
         },
-      });
+      },
+    });
+  }
+
+  if (command === 'balance') {
+    try {
+      const user = await User.findOne({ where: { userId: msg.author.id } });
+
+      if (!user) {
+        return msg.channel.send(
+          'You are not registered, check if your are **ONLINE**'
+        );
+      }
+
+      return msg.channel.send(`You have ${user.balance} credits`);
+    } catch (error) {
+      console.log('Error at fetching balance..');
     }
-  } catch (error) {
-    console.log(error);
+  }
+
+  if (command === 'gamble') {
+    try {
+      const user = await User.findOne({ where: { userId: msg.author.id } });
+
+      if (!user) {
+        return msg.channel.send(
+          'You are not registered, check if your status is **ONLINE**'
+        );
+      }
+
+      const amount = args[0];
+
+      if (!amount || isNaN(amount)) {
+        return msg.channel.send('Please enter a valid amount of credits..');
+      }
+
+      if (amount > user.balance) {
+        return msg.channel.send(`You don't have ${amount} credits to gamble`);
+      }
+
+      const isWin = Math.random() >= 0.5;
+      user.balance = isWin ? user.balance + +amount : user.balance - amount;
+      await user.save();
+
+      return msg.channel.send(
+        `You have ${isWin ? 'won' : 'lost'} ${amount} credits!`
+      );
+    } catch (error) {
+      console.log('Error at gambling..');
+    }
   }
 });
 
 sequelize.sync({ logging: false }).then(() => {
-  console.log('connected to sqlite');
+  console.log('Connected to DB');
   client.login(process.env.DISCORD_BOT_TOKEN);
 });
