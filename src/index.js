@@ -57,6 +57,10 @@ client.on('message', async (msg) => {
     if (msg.content.startsWith('!gamble')) {
       const amount = msg.content.split(' ')[1];
 
+      if (!amount || isNaN(amount)) {
+        return msg.channel.send('please enter a valid amount..');
+      }
+
       if (amount > user.balance) {
         return msg.channel.send(`you don't have ${amount} credits to bet`);
       }
