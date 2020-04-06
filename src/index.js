@@ -45,9 +45,10 @@ client.on('message', async (msg) => {
         user.balance = user.balance + 5;
         user.lastMessageTimestamp = msg.createdTimestamp;
       }
-      user.username = msg.author.username;
-      await user.save();
     }
+
+    user.username = msg.author.username;
+    await user.save();
 
     if (msg.content === '!balance') {
       return msg.channel.send(`you have ${user.balance} credits`);
