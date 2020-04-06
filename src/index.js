@@ -22,7 +22,9 @@ User.init(
 const client = new Client();
 
 client.on('ready', () => {
-  console.log('discord bot running!');
+  client.user.setActivity('!help', { type: 'LISTENING' }).then(() => {
+    console.log(`logged in as ${client.user.tag}`);
+  });
 });
 
 client.on('message', async (msg) => {
@@ -138,7 +140,7 @@ client.on('message', async (msg) => {
   }
 });
 
-sequelize.sync().then(() => {
-  console.log('connected to db');
+sequelize.sync({ logging: false }).then(() => {
+  console.log('connected to sqlite');
   client.login(process.env.DISCORD_BOT_TOKEN);
 });
