@@ -26,7 +26,7 @@ client.on('ready', () => {
 });
 
 client.on('message', async (msg) => {
-  if (msg.author.id === client.user.id) return;
+  if (msg.author.bot) return;
 
   try {
     let user = await User.findOne({ where: { userId: msg.author.id } });
@@ -55,7 +55,11 @@ client.on('message', async (msg) => {
     }
 
     if (msg.content.startsWith('!gamble')) {
-      const amount = msg.content.split(' ')[1];
+      const args = msg.content
+        .split(' ')
+        .slice(1)
+        .filter((x) => x);
+      const amount = args[0];
 
       if (!amount || isNaN(amount)) {
         return msg.channel.send('please enter a valid amount..');
