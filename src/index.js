@@ -98,8 +98,8 @@ client.on('message', async (msg) => {
             value: 'Check your current balance',
           },
           {
-            name: '!gamble <amount>',
-            value: 'Gamble an amount of your credits',
+            name: '!bet <amount>',
+            value: 'Bet an amount of your credits',
           },
           {
             name: '!top',
@@ -134,7 +134,7 @@ client.on('message', async (msg) => {
     }
   }
 
-  if (command === 'gamble') {
+  if (command === 'bet') {
     try {
       const user = await User.findOne({ where: { userId: msg.author.id } });
 
@@ -146,12 +146,12 @@ client.on('message', async (msg) => {
 
       const amount = args[0];
 
-      if (!amount || isNaN(amount)) {
+      if (!amount || isNaN(amount) || amount <= 0) {
         return msg.channel.send('Please enter a valid amount of credits..');
       }
 
       if (amount > user.balance) {
-        return msg.channel.send(`You don't have ${amount} credits to gamble`);
+        return msg.channel.send(`You don't have ${amount} credits to bet`);
       }
 
       const isWin = Math.random() >= 0.5;
@@ -163,6 +163,56 @@ client.on('message', async (msg) => {
       );
     } catch (error) {
       console.log('Error at gambling..');
+    }
+  }
+
+  if (command === 'give') {
+    try {
+      const user = await User.findOne({ where: { userId: msg.author.id } });
+
+      if (!user) {
+        return msg.channel.send(
+          'You are not registered, check if your status is **ONLINE**'
+        );
+      }
+
+      const amount = args[0];
+
+      if (!amount || isNaN(amount) || amount <= 0) {
+        return msg.channel.send('Please enter a valid amount of credits..');
+      }
+
+      if (amount > user.balance) {
+        return msg.channel.send(`You don't have ${amount} credits to give`);
+      }
+
+      const targetUser = msg.mentions.users.first();
+
+      if (!targetUser) {
+        return msg.channel.send(
+          `You must enter a valid user to give credits..`
+        );
+      }
+
+      const recipientUser = await User.findOne({
+        where: { userId: targetUser.id },
+      });
+
+      if (!recipientUser) {
+        return msg.channel.send('The user you entered is not registered yet..');
+      }
+
+      user.balance = user.balance - amount;
+      await user.save();
+
+      recipientUser.balance = recipientUser.balance + +amount;
+      await recipientUser.save();
+
+      return msg.channel.send(
+        `**${msg.author}** has given **${targetUser}** ${amount} credits! :money_mouth:`
+      );
+    } catch (error) {
+      console.log('Error at giving credits..');
     }
   }
 });
