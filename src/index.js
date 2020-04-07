@@ -19,11 +19,11 @@ User.init(
   { sequelize, modelName: 'user' }
 );
 
-const prefix = process.env.DISCORD_BOT_PREFIX || '!';
+const PREFIX = process.env.DISCORD_BOT_PREFIX || '!';
 const client = new Client();
 
 client.on('ready', () => {
-  client.user.setActivity(`${prefix}help`, { type: 'LISTENING' }).then(() => {
+  client.user.setActivity(`${PREFIX}help`, { type: 'LISTENING' }).then(() => {
     console.log(`Logged in as ${client.user.tag}`);
   });
 
@@ -52,9 +52,9 @@ client.on('ready', () => {
 });
 
 client.on('message', async (msg) => {
-  if (!msg.content.startsWith(prefix) || msg.author.bot) return;
+  if (!msg.content.startsWith(PREFIX) || msg.author.bot) return;
 
-  const args = msg.content.slice(prefix.length).split(' ');
+  const args = msg.content.slice(PREFIX.length).split(' ');
   const command = args.shift().toLowerCase();
 
   if (command === 'top') {
@@ -100,6 +100,10 @@ client.on('message', async (msg) => {
           {
             name: '!bet <amount>',
             value: 'Bet an amount of your credits',
+          },
+          {
+            name: '!give <amount> <user>',
+            value: 'Give an amount of credits to another user',
           },
           {
             name: '!top',
